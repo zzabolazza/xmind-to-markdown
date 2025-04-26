@@ -20,6 +20,24 @@ const path = require('path')
 //         }
 //     ]
 // }
+function signMultiplication(sign, n, sequence) {
+    let result = ''
+
+    if (sequence.length > 1) {
+        for (let i = 0; i < sequence.length - 1 - 1; i++) {
+        result += '  '
+        }
+        result += '-'
+    } else {
+        for (let i = 0; i < sequence.length; i++) {
+        result += sign
+        }
+
+        result += ' ' + sequence.join('.') + "、"
+    }
+
+    return result
+}
 /**
  * 生成markdown
  * @param {文件句柄} fd 
@@ -27,18 +45,26 @@ const path = require('path')
  * @param {节点} node 
  * @param {等级} level 
  */
-function generateMarkdown(fd, name, node, level) {
+function generateMarkdown(fd, name, node, level, sequence) {
     // let markdown = ""
     if (!level) {
         level = 0
     }
     //处理节点文本
     if (node.data.text) {
-        let prefix = ''
-        for (let i = 0; i < level; i++) {
-            prefix += '#'
-        }
+        let prefix = signMultiplication('#', level, sequence)
         let markdown = `${prefix} ${node.data.text}\n\n`
+
+        if (sequence.length == 0) {
+            markdown = `---
+title: ${node.data.text}
+markmap:
+    colorFreezeLevel: 2
+    embedAssets: true
+    maxWidth: 720
+---\n`
+        }
+
         myWriteFile(fd, markdown)
     }
     //处理tag
@@ -52,11 +78,11 @@ function generateMarkdown(fd, name, node, level) {
     }
     //处理进度图标
     if (node.data.progress) {
-        let content = `> 当前进度: ${name.data.progress}/8 \n\n`
+        let content = `> 当前进度: ${node.data.progress}/8 \n\n`
         if (node.data.progress == 0) {
             content = `> 当前进度: 未开始 \n\n`
         }
-        myWriteFile(fd, content);
+        // myWriteFile(fd, content);
     }
     //处理备注
     if (node.data.note) {
@@ -97,10 +123,10 @@ function generateMarkdown(fd, name, node, level) {
         myWriteFile(fd, hyperlinkContent)
     }
     //处理子节点
-    if (node.children && node.children.length > 0) {
-        node.children.forEach(element => {
-            generateMarkdown(fd, name, element, level + 1);
-        });
+    if (node.children) {
+        for (let i = 0; i < node.children.length; i++) {
+            generateMarkdown(fd, name, node.children[i], level + 1, sequence.concat([i + 1]));
+        }
     }
 }
 /**
@@ -124,7 +150,7 @@ function myWriteFile(fd, content) {
  */
 function outputMarkdown(name, node) {
     fd = fs.openSync(`${name}.md`, 'w+');
-    generateMarkdown(fd, name, node, 1);
+    generateMarkdown(fd, name, node, 1, []);
     console.log(`${name}.md generated.`);
     console.log("markdown export successful!");
 }
